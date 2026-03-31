@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BNDZR USB Updater</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 2 2' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='a'%3E%3CfeDropShadow dx='.1' dy='.1'/%3E%3C/filter%3E%3Cg transform='translate(-.12 -.12)'%3E%3Cpath d='m1.6 1.95h-1.41v-1.76h1.59v.18h.18v1.41h-.18v.18zm-.53-.35h.18v-.35h-.35v.35zm0-.71h.18v-.35h-.35v.35z' fill='%23fff' filter='url(%23a)'/%3E%3C/g%3E%3C/svg%3E">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#111;color:#eee;font-family:'Inter',sans-serif;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;padding:24px}
+.logo-svg{height:44px;color:#eee;margin-bottom:12px}
+.subtitle{color:#555;font-size:.82em;letter-spacing:.08em;text-transform:uppercase;
+  margin-bottom:28px}
+
+/* Browser warning */
+.browser-warn{background:#1a1a1a;border:1px solid #f59e0b44;border-radius:12px;
+  padding:16px 20px;max-width:440px;width:100%;margin-bottom:20px;
+  font-size:.85em;color:#aaa;line-height:1.6;display:none}
+.browser-warn strong{color:#f59e0b}
+
+/* Card */
+.card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:16px;
+  padding:28px;width:100%;max-width:460px}
+@media(max-width:480px){.card{padding:20px}}
+
+/* Drop zone */
+.drop-zone{border:2px dashed #333;border-radius:10px;padding:28px 20px;
+  text-align:center;cursor:pointer;transition:.2s;margin-bottom:20px;
+  position:relative}
+.drop-zone:hover,.drop-zone.drag{border-color:#f59e0b}
+.drop-zone.drag{background:#f59e0b08}
+.drop-icon{font-size:2em;margin-bottom:8px;display:block}
+.drop-label{font-size:.9em;color:#777}
+.drop-label strong{color:#aaa}
+.drop-hint{font-size:.75em;color:#444;margin-top:6px}
+input[type=file]{display:none}
+
+/* Checklist */
+.checklist{margin-bottom:20px;display:flex;flex-direction:column;gap:6px}
+.check-item{display:flex;align-items:center;gap:10px;
+  font-size:.83em;font-family:'JetBrains Mono',monospace;
+  padding:7px 10px;border-radius:8px;background:#161616;
+  border:1px solid #222;transition:.2s}
+.check-item.ok{border-color:#22c55e22;background:#22c55e08}
+.check-item.ok .ci-icon{color:#22c55e}
+.check-item.missing .ci-icon{color:#333}
+.ci-icon{font-size:1em;width:16px;text-align:center;flex-shrink:0}
+.ci-name{color:#666;flex:1}
+.check-item.ok .ci-name{color:#aaa}
+.ci-addr{color:#444;font-size:.85em}
+.check-item.ok .ci-addr{color:#555}
+
+/* Button */
+button{width:100%;padding:14px;background:#f59e0b;color:#111;border:0;
+  border-radius:10px;font-size:.95em;font-weight:600;cursor:pointer;
+  transition:.2s;letter-spacing:.04em;
+  box-shadow:0 1px 3px rgba(245,158,11,.25)}
+button:hover:not(:disabled){background:#fbbf24;
+  box-shadow:0 4px 12px rgba(245,158,11,.35);transform:translateY(-1px)}
+button:active:not(:disabled){transform:translateY(0)}
+button:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.btn-secondary{background:transparent;color:#f59e0b;
+  border:1px solid #f59e0b44;box-shadow:none;margin-top:10px}
+.btn-secondary:hover:not(:disabled){background:#f59e0b11;box-shadow:none}
+
+/* Progress */
+.bar-wrap{height:5px;background:#222;border-radius:3px;overflow:hidden;
+  margin-top:18px;display:none}
+.bar{height:100%;background:#f59e0b;width:0%;transition:width .25s}
+
+/* Status */
+#status{margin-top:12px;text-align:center;min-height:20px;
+  font-size:.82em;color:#555}
+.ok{color:#22c55e}.err{color:#ef4444}.warn{color:#f59e0b}
+
+/* Log */
+.log-wrap{margin-top:14px;display:none}
+.log{background:#0e0e0e;border:1px solid #222;border-radius:8px;
+  padding:10px 12px;height:140px;overflow-y:auto;
+  font-family:'JetBrains Mono',monospace;font-size:.72em;
+  color:#555;line-height:1.7;scrollbar-width:thin;
+  scrollbar-color:#333 transparent}
+.log .l-ok{color:#22c55e}.log .l-err{color:#ef4444}
+.log .l-hi{color:#aaa}
+
+/* Success panel */
+.success-panel{display:none;text-align:center;padding-top:4px}
+.success-icon{font-size:2.5em;margin-bottom:10px}
+.success-title{font-size:1.05em;font-weight:600;color:#22c55e;margin-bottom:6px}
+.success-sub{font-size:.82em;color:#555}
+</style>
+</head>
+<body>
+
+<svg class="logo-svg" viewBox="0 0 9.525 1.7639" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BNDZR">
+  <defs><filter id="ls"><feDropShadow dx="1" dy="3" stdDeviation="4" flood-opacity="0.6"/></filter></defs>
+  <g transform="translate(-.18472 -.18314)">
+    <path d="m1.5958 1.947h-1.4111v-1.7639h1.5875v0.17639h0.17639v1.4111h-0.17639v0.17639zm-0.52917-0.35278h0.17639v-0.35278h-0.35278v0.35278zm0-0.70556h0.17639v-0.35278h-0.35278v0.35278zm2.6458 1.0583h-0.52917v-0.52917h-0.17639v-0.17639h-0.17639v0.70556h-0.70556v-1.7639h0.70556v0.35278h0.17639v0.17639h0.17639v-0.52917h0.70556v1.7639zm1.7639 0h-1.4111v-1.7639h1.5875v0.17639h0.17639v1.4111h-0.17639v0.17639zm-0.52917-0.35278h0.17639v-1.0583h-0.35278v1.0583zm2.6458 0.35278h-1.5875v-0.52917h0.17639v-0.17639h0.17639v-0.17639h0.17639v-0.17639h0.17639v-0.17639h0.17639v-0.17639h-0.88195v-0.35278h1.7639v0.52917h-0.17639v0.17639h-0.17639v0.17639h-0.17639v0.17639h-0.17639v0.17639h-0.17639v0.17639h0.88195v0.35278zm1.9403 0h-0.52917v-0.70556h-0.35278v0.70556h-0.70556v-1.7639h1.5875v0.17639h0.17639v0.70556h-0.17639v0.17639h0.17639v0.70556zm-0.70556-1.0583h0.17639v-0.35278h-0.35278v0.35278z"
+    stroke-width=".295" fill="currentColor" filter="url(#ls)"/>
+  </g>
+</svg>
+<p class="subtitle">USB Firmware Updater</p>
+
+<div class="browser-warn" id="browserWarn">
+  <strong>Unsupported browser.</strong> This tool requires Chrome or Edge (version 89+).<br>
+  Please open this file in Chrome or Edge to continue.
+</div>
+
+<div class="card" id="card">
+
+  <!-- Drop zone -->
+  <div class="drop-zone" id="dropZone">
+    <span class="drop-icon">&#128228;</span>
+    <div class="drop-label">Drop the <strong>4 firmware files</strong> here</div>
+    <div class="drop-hint">or click to select &nbsp;&mdash;&nbsp; bootloader, partition-table, ota_data_initial, BNDZR_*.bin</div>
+    <input type="file" id="fileInput" multiple accept=".bin">
+  </div>
+
+  <!-- File checklist -->
+  <div class="checklist" id="checklist">
+    <div class="check-item missing" id="ci-bootloader">
+      <span class="ci-icon">&#9675;</span>
+      <span class="ci-name">bootloader.bin</span>
+      <span class="ci-addr">0x0000</span>
+    </div>
+    <div class="check-item missing" id="ci-partition">
+      <span class="ci-icon">&#9675;</span>
+      <span class="ci-name">partition-table.bin</span>
+      <span class="ci-addr">0x8000</span>
+    </div>
+    <div class="check-item missing" id="ci-otadata">
+      <span class="ci-icon">&#9675;</span>
+      <span class="ci-name">ota_data_initial.bin</span>
+      <span class="ci-addr">0xf000</span>
+    </div>
+    <div class="check-item missing" id="ci-firmware">
+      <span class="ci-icon">&#9675;</span>
+      <span class="ci-name">BNDZR_*.bin</span>
+      <span class="ci-addr">0x20000</span>
+    </div>
+  </div>
+
+  <!-- Main button -->
+  <button id="flashBtn" disabled>Connect &amp; Flash</button>
+
+  <!-- Progress bar -->
+  <div class="bar-wrap" id="barWrap"><div class="bar" id="bar"></div></div>
+
+  <!-- Status line -->
+  <div id="status">Drop the 4 firmware files above to begin.</div>
+
+  <!-- Log output -->
+  <div class="log-wrap" id="logWrap">
+    <div class="log" id="log"></div>
+  </div>
+
+  <!-- Success panel -->
+  <div class="success-panel" id="successPanel">
+    <div class="success-icon">&#9989;</div>
+    <div class="success-title">Firmware installed!</div>
+    <div class="success-sub" id="successSub">Device is restarting.</div>
+    <button class="btn-secondary" id="againBtn">Flash another device</button>
+  </div>
+
+</div>
+
+<script>
+const ESPTOOL_CDN = 'https://esm.sh/esptool-js@0.4.3';
+
+// ── File map ────────────────────────────────────────────────────────────────
+
+const FILE_MAP = [
+  { key: 'bootloader', test: n => n === 'bootloader.bin',                           addr: 0x0000 },
+  { key: 'partition',  test: n => n === 'partition-table.bin',                      addr: 0x8000 },
+  { key: 'otadata',    test: n => n === 'ota_data_initial.bin',                     addr: 0xf000 },
+  { key: 'firmware',   test: n => n.startsWith('bndzr_') && n.endsWith('.bin'),     addr: 0x20000 },
+];
+
+const loaded = {}; // key → { file, name }
+
+// ── DOM refs ────────────────────────────────────────────────────────────────
+
+const dropZone   = document.getElementById('dropZone');
+const fileInput  = document.getElementById('fileInput');
+const flashBtn   = document.getElementById('flashBtn');
+const barWrap    = document.getElementById('barWrap');
+const bar        = document.getElementById('bar');
+const statusEl   = document.getElementById('status');
+const logWrap    = document.getElementById('logWrap');
+const logEl      = document.getElementById('log');
+const successPanel = document.getElementById('successPanel');
+const successSub   = document.getElementById('successSub');
+const againBtn     = document.getElementById('againBtn');
+
+// ── Browser check ───────────────────────────────────────────────────────────
+
+if (!('serial' in navigator)) {
+  document.getElementById('browserWarn').style.display = 'block';
+  document.getElementById('card').style.opacity = '0.4';
+  document.getElementById('card').style.pointerEvents = 'none';
+}
+
+// ── File handling ────────────────────────────────────────────────────────────
+
+function identifyFile(file) {
+  const name = file.name.toLowerCase();
+  return FILE_MAP.find(e => e.test(name)) || null;
+}
+
+function updateChecklist() {
+  for (const entry of FILE_MAP) {
+    const el = document.getElementById('ci-' + entry.key);
+    const nameEl = el.querySelector('.ci-name');
+    if (loaded[entry.key]) {
+      el.className = 'check-item ok';
+      el.querySelector('.ci-icon').textContent = '✓';
+      nameEl.textContent = loaded[entry.key].name;
+    } else {
+      el.className = 'check-item missing';
+      el.querySelector('.ci-icon').textContent = '○';
+      nameEl.textContent = entry.key === 'firmware' ? 'BNDZR_*.bin' :
+                           entry.key === 'bootloader' ? 'bootloader.bin' :
+                           entry.key === 'partition'  ? 'partition-table.bin' :
+                                                        'ota_data_initial.bin';
+    }
+  }
+
+  const allReady = FILE_MAP.every(e => loaded[e.key]);
+  flashBtn.disabled = !allReady;
+  if (allReady) {
+    setStatus('All files ready. Connect your BNDZR device and click Flash.', '');
+  } else {
+    const missing = FILE_MAP.filter(e => !loaded[e.key]).length;
+    setStatus(`${missing} file${missing > 1 ? 's' : ''} missing.`, '');
+  }
+}
+
+function handleFiles(files) {
+  let added = 0;
+  for (const file of files) {
+    const entry = identifyFile(file);
+    if (entry) {
+      loaded[entry.key] = { file, name: file.name };
+      added++;
+    }
+  }
+  if (added === 0) {
+    setStatus('No recognized firmware files in selection.', 'warn');
+  }
+  updateChecklist();
+}
+
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+async function autoLoadSupportFiles() {
+  if (location.protocol === 'file:') return;
+  const FIXED = ['bootloader.bin', 'partition-table.bin', 'ota_data_initial.bin'];
+  await Promise.all(FIXED.map(async name => {
+    try {
+      const res = await fetch('./' + name);
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const file = new File([blob], name, { type: 'application/octet-stream' });
+      const entry = identifyFile(file);
+      if (entry) loaded[entry.key] = { file, name };
+    } catch { /* not available */ }
+  }));
+  updateChecklist();
+}
+
+window.addEventListener('load', autoLoadSupportFiles);
+
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropZone.classList.add('drag');
+});
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag');
+  // Support both files and folders (via items API)
+  const files = [];
+  if (e.dataTransfer.items) {
+    for (const item of e.dataTransfer.items) {
+      if (item.kind === 'file') files.push(item.getAsFile());
+    }
+  } else {
+    for (const f of e.dataTransfer.files) files.push(f);
+  }
+  handleFiles(files);
+});
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function setStatus(msg, cls = '') {
+  statusEl.textContent = msg;
+  statusEl.className = cls;
+}
+
+function setProgress(pct) {
+  bar.style.width = Math.min(100, pct) + '%';
+}
+
+function logLine(text, cls = '') {
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = text;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+async function readFileData(file) {
+  const buf = await file.arrayBuffer();
+  const arr = new Uint8Array(buf);
+  const chunks = [];
+  const CHUNK = 8192;
+  for (let i = 0; i < arr.length; i += CHUNK) {
+    chunks.push(String.fromCharCode.apply(null, arr.subarray(i, i + CHUNK)));
+  }
+  return chunks.join('');
+}
+
+// ── Flash ─────────────────────────────────────────────────────────────────────
+
+flashBtn.addEventListener('click', doFlash);
+againBtn.addEventListener('click', resetToReady);
+
+function resetToReady() {
+  successPanel.style.display = 'none';
+  flashBtn.style.display = 'block';
+  barWrap.style.display = 'none';
+  logWrap.style.display = 'none';
+  logEl.innerHTML = '';
+  setProgress(0);
+  updateChecklist();
+}
+
+async function doFlash() {
+  flashBtn.disabled = true;
+  flashBtn.style.display = 'none';
+  successPanel.style.display = 'none';
+  barWrap.style.display = 'block';
+  logWrap.style.display = 'block';
+  logEl.innerHTML = '';
+  setProgress(0);
+
+  let transport;
+  try {
+    let ESPLoader, Transport;
+    try {
+      ({ ESPLoader, Transport } = await import(ESPTOOL_CDN));
+    } catch (e) {
+      throw new Error('Failed to load esptool-js. Check your internet connection.');
+    }
+
+    // Read all files
+    setStatus('Reading files...', '');
+    logLine('Reading firmware files...');
+
+    const fileArray = [];
+    for (const entry of FILE_MAP) {
+      const { file, name } = loaded[entry.key];
+      logLine(`  ${name}  (${(file.size / 1024).toFixed(1)} KB)`);
+      const data = await readFileData(file);
+      fileArray.push({ data, address: entry.addr });
+    }
+
+    const totalBytes = fileArray.reduce((s, f) => s + f.data.length, 0);
+    const fileWritten = new Array(fileArray.length).fill(0);
+
+    // Request serial port
+    setStatus('Waiting for port selection...', '');
+    logLine('Requesting serial port...');
+    const port = await navigator.serial.requestPort();
+
+    transport = new Transport(port, false);
+
+    const terminal = {
+      clean() {},
+      writeLine(data) { if (data.trim()) logLine(data.trim(), 'l-hi'); },
+      write(data)     { /* suppress partial writes */ },
+    };
+
+    const loader = new ESPLoader({ transport, baudrate: 921600, terminal, debugLogging: false });
+
+    // Connect
+    setStatus('Connecting to device...', '');
+    logLine('Connecting...');
+    const chip = await loader.main();
+    logLine(`Connected: ${chip}`, 'l-ok');
+    setStatus(`Connected: ${chip}`, 'ok');
+
+    // Write flash
+    logLine('Writing flash...');
+    const FILE_NAMES = ['bootloader.bin', 'partition-table.bin', 'ota_data_initial.bin', loaded.firmware.name];
+
+    const flashOptions = {
+      fileArray,
+      flashSize: '4MB',
+      flashMode: 'dio',
+      flashFreq: '80m',
+      eraseAll: false,
+      compress: true,
+      reportProgress(fileIndex, written, total) {
+        fileWritten[fileIndex] = written;
+        const done = fileWritten.reduce((s, b) => s + b, 0);
+        setProgress(Math.round(done / totalBytes * 100));
+        const pct = Math.round(written / total * 100);
+        setStatus(`Writing ${FILE_NAMES[fileIndex]}... ${pct}%`, '');
+        if (written === total) {
+          logLine(`  ✓ ${FILE_NAMES[fileIndex]}`, 'l-ok');
+        }
+      },
+    };
+
+    await loader.writeFlash(flashOptions);
+
+    setProgress(100);
+
+    // Reset device
+    logLine('Resetting device...');
+    try {
+      await loader.hardReset();
+    } catch {
+      await transport.setRTS(false);
+      await new Promise(r => setTimeout(r, 100));
+      await transport.setRTS(true);
+      await new Promise(r => setTimeout(r, 100));
+      await transport.setRTS(false);
+    }
+
+    await transport.disconnect();
+    transport = null;
+
+    logLine('Done!', 'l-ok');
+    setStatus('', '');
+
+    // Show success
+    successSub.textContent = `Flashed: ${loaded.firmware.name}`;
+    successPanel.style.display = 'block';
+
+  } catch (err) {
+    logLine(`Error: ${err.message}`, 'l-err');
+    setStatus(err.message, 'err');
+    if (transport) {
+      try { await transport.disconnect(); } catch {}
+    }
+    flashBtn.disabled = false;
+    flashBtn.style.display = 'block';
+  }
+}
+</script>
+</body>
+</html>
